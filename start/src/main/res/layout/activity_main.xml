@@ -36,10 +36,23 @@
             android:background="#8000">
 
                 <ImageView
+                    android:layout_width="100dp"
+                    android:layout_height="wrap_content"
+                    android:contentDescription="@string/tensorflow_lite_logo_description"
+                    android:src="@drawable/tfl2_logo" />
+
+                <TextView
+                    android:id="@+id/lbcodigo"
+                    android:text="codigo"
+                    android:textColor="@color/white"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"/>
+                <Button
+                    android:id="@+id/masinfo"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:src="@drawable/tfl2_logo"
-                    android:contentDescription="@string/tensorflow_lite_logo_description" />
+                    android:layout_marginHorizontal="30dp"
+                    android:text="Mas información"/>
         </androidx.appcompat.widget.Toolbar>
 
         <androidx.recyclerview.widget.RecyclerView

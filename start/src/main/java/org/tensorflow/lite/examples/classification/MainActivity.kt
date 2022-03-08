@@ -18,13 +18,17 @@ package org.tensorflow.lite.examples.classification
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Matrix
 import android.os.Bundle
 import android.util.Log
 import android.util.Size
+import android.widget.Button
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
@@ -39,10 +43,13 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Observer
 import androidx.recyclerview.widget.RecyclerView
+import org.tensorflow.lite.examples.classification.ml.Model
 import org.tensorflow.lite.examples.classification.ui.RecognitionAdapter
 import org.tensorflow.lite.examples.classification.util.YuvToRgbConverter
 import org.tensorflow.lite.examples.classification.viewmodel.Recognition
 import org.tensorflow.lite.examples.classification.viewmodel.RecognitionListViewModel
+import org.tensorflow.lite.support.image.TensorImage
+import org.w3c.dom.Text
 import java.util.concurrent.Executors
 import kotlin.random.Random
 
@@ -65,6 +72,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var imageAnalyzer: ImageAnalysis // Analysis use case, for running ML code
     private lateinit var camera: Camera
     private val cameraExecutor = Executors.newSingleThreadExecutor()
+    private lateinit var btn_masinfo:Button
+    private lateinit var countryCode:String
 
     // Views attachment
     private val resultRecyclerView by lazy {
@@ -72,6 +81,10 @@ class MainActivity : AppCompatActivity() {
     }
     private val viewFinder by lazy {
         findViewById<PreviewView>(R.id.viewFinder) // Display the preview image from Camera
+    }
+
+    private val lbCode by lazy {
+        findViewById<TextView>(R.id.lbcodigo) // codigo a mostrar
     }
 
     // Contains the recognition result. Since  it is a viewModel, it will survive screen rotations
@@ -106,6 +119,19 @@ class MainActivity : AppCompatActivity() {
                 viewAdapter.submitList(it)
             }
         )
+
+
+        // set evento del boton
+        btn_masinfo = findViewById(R.id.masinfo) as Button
+
+        btn_masinfo.setOnClickListener {
+
+            //Toast.makeText(this,countryCode, Toast.LENGTH_LONG).show()
+            val intent = Intent(this, masinfo::class.java).apply {
+                putExtra("codigo", countryCode)
+            }
+            startActivity(intent)
+        }
 
     }
 
@@ -176,8 +202,19 @@ class MainActivity : AppCompatActivity() {
                     analysisUseCase.setAnalyzer(cameraExecutor, ImageAnalyzer(this) { items ->
                         // updating the list of recognised objects
                         recogViewModel.updateData(items)
+                    }.apply {
+                        setOnDatosListerner(object:ImageAnalyzer.DatosListener{
+                            override fun setOnDatosListerner(codigo: String) {
+                                runOnUiThread {
+                                    lbCode.text = codigo
+                                    countryCode = codigo
+                                }
+                            }
+
+                        })
                     })
                 }
+
 
             // Select camera, back is the default. If it is not available, choose front camera
             val cameraSelector =
@@ -209,6 +246,10 @@ class MainActivity : AppCompatActivity() {
         // TODO 1: Add class variable TensorFlow Lite Model
         // Initializing the flowerModel by lazy so that it runs in the same thread when the process
         // method is called.
+        private val model = Model.newInstance(ctx)
+        private lateinit var mListener:DatosListener
+
+
 
         // TODO 6. Optional GPU acceleration
 
@@ -218,22 +259,45 @@ class MainActivity : AppCompatActivity() {
             val items = mutableListOf<Recognition>()
 
             // TODO 2: Convert Image to Bitmap then to TensorImage
+            val tfImage = TensorImage.fromBitmap(toBitmap(imageProxy))
 
             // TODO 3: Process the image using the trained model, sort and pick out the top results
+            val outputs = model.process(tfImage).probabilityAsCategoryList.apply {
+                sortByDescending { it.score }
+            }.take(MAX_RESULT_DISPLAY)
 
             // TODO 4: Converting the top probability items into a list of recognitions
-
-            // START - Placeholder code at the start of the codelab. Comment this block of code out.
-            for (i in 0 until MAX_RESULT_DISPLAY){
-                items.add(Recognition("Fake label $i", Random.nextFloat()))
+            for (output in outputs) {
+                items.add(Recognition(output.label, output.score))
             }
-            // END - Placeholder code at the start of the codelab. Comment this block of code out.
+
+            mListener.setOnDatosListerner(outputs[0].label)
+
+
+
+//            // START - Placeholder code at the start of the codelab. Comment this block of code out.
+//            for (i in 0 until MAX_RESULT_DISPLAY){
+//                items.add(Recognition("Fake label $i", Random.nextFloat()))
+//            }
+//            // END - Placeholder code at the start of the codelab. Comment this block of code out.
 
             // Return the result
             listener(items.toList())
 
             // Close the image,this tells CameraX to feed the next image to the analyzer
             imageProxy.close()
+        }
+
+        interface DatosListener{
+            fun setOnDatosListerner(codigo:String)
+        }
+
+        fun setOnDatosListerner(mListener:DatosListener){
+            this.mListener = mListener
+        }
+
+        fun Hola() {
+            println("Hola")
         }
 
         /**
